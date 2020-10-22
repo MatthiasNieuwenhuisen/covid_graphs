@@ -106,8 +106,9 @@ ax1 = fig.add_subplot(1,1,1)
 
 ax1.set_ylabel('Cummulative Cases 7 Days per 100k Pop.')
 for country in countries:
+    color = next(ax1._get_lines.prop_cycler)['color']
     country_name = dataset[dataset['geoId']==country].head(1)['countriesAndTerritories'].iloc[0]
-    merged_data[1:max_days]['cum_cases_7_days_'+country].plot(kind='line',ax=ax1,label=country_name)
+    merged_data[1:max_days]['cum_cases_7_days_'+country].plot(kind='line',ax=ax1,label=country_name,color=color)
     # extrapolation
     try:
         if country != "MUENSTER":
@@ -122,7 +123,7 @@ for country in countries:
                 new_data.append(exponential_fit(i, a, b, c))
                 new_data_index.append(y.index[0]+pandas.DateOffset(-i))
             df = pandas.DataFrame(index=new_data_index,data=new_data)
-            pyplot.plot(df)
+            pyplot.plot(df,color=color,linestyle='dashed')
     except:
         pass
     
