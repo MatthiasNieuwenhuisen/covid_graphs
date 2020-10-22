@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# In[1]:
+# In[ ]:
 
 
 import matplotlib.pyplot as pyplot
@@ -15,7 +15,7 @@ def exponential_fit(x, a, b, c):
     return a*np.exp(-b*x) + c
 
 
-# In[2]:
+# In[ ]:
 
 
 #dataset = pandas.read_csv("~/Downloads/v3Nbr69N",sep=",",header=0,encoding="utf8",index_col=0,parse_dates=True,dayfirst=True)
@@ -24,7 +24,7 @@ dataset_bonn_dl = pandas.read_csv("https://stadtplan.bonn.de/csv?OD=4379",sep=";
 dataset_muenster_dl = pandas.read_csv("https://raw.githubusercontent.com/od-ms/resources/master/coronavirus-fallzahlen-regierungsbezirk-muenster.csv",sep=",",header=0,encoding="utf8",parse_dates=True,dayfirst=True)
 
 
-# In[18]:
+# In[ ]:
 
 
 # Setup
@@ -39,7 +39,7 @@ dataset_bonn = dataset_bonn_dl
 dataset_regbez_muenster = dataset_muenster_dl
 
 
-# In[19]:
+# In[ ]:
 
 
 # Convert Bonn dataset to ECDC format and append
@@ -52,7 +52,7 @@ relevant_bonn = diff_bonn[['geoId','cases','popData2019','countriesAndTerritorie
 dataset = dataset.append(relevant_bonn)
 
 
-# In[20]:
+# In[ ]:
 
 
 # Convert Muenster dataset to ECDC format and append
@@ -71,7 +71,7 @@ dataset_muenster_relevant = dataset_muenster_relevant.rename(columns={"Bestätig
 dataset = dataset.append(dataset_muenster_relevant)
 
 
-# In[21]:
+# In[ ]:
 
 
 # Get relevant columns
@@ -89,7 +89,7 @@ for country in countries[1:]:
     merged_data = pandas.merge(merged_data,countrydata[country],how='left',left_index=True,right_index=True)
 
 
-# In[22]:
+# In[ ]:
 
 
 # Calculate 7-day incidence
