@@ -30,8 +30,8 @@ dataset_muenster_dl = pandas.read_csv("https://raw.githubusercontent.com/od-ms/r
 # Setup
 #countries = ["DE","SE","US"]
 countries = ["DE","BONN","MUENSTER"]
-max_days=300
-extrapolation_look_back = 30
+max_days=60
+extrapolation_look_back = 20
 extrapolation_future = 5
 
 dataset = dataset_dl
@@ -42,33 +42,35 @@ dataset_regbez_muenster = dataset_muenster_dl
 # In[ ]:
 
 
-# Convert Bonn dataset to ECDC format and append
-diff_bonn = dataset_bonn.sort_index(ascending=False).diff(periods=-1)
-diff_bonn['popData2019'] = 330224
-diff_bonn['countriesAndTerritories'] = 'Bonn'
-diff_bonn['geoId'] = 'BONN'
-diff_bonn = diff_bonn.rename(columns={"positiv_getest": "cases"})
-relevant_bonn = diff_bonn[['geoId','cases','popData2019','countriesAndTerritories']]
-dataset = dataset.append(relevant_bonn)
+if "BONN" in countries:
+    # Convert Bonn dataset to ECDC format and append
+    diff_bonn = dataset_bonn.sort_index(ascending=False).diff(periods=-1)
+    diff_bonn['popData2019'] = 330224
+    diff_bonn['countriesAndTerritories'] = 'Bonn'
+    diff_bonn['geoId'] = 'BONN'
+    diff_bonn = diff_bonn.rename(columns={"positiv_getest": "cases"})
+    relevant_bonn = diff_bonn[['geoId','cases','popData2019','countriesAndTerritories']]
+    dataset = dataset.append(relevant_bonn)
 
 
 # In[ ]:
 
 
-# Convert Muenster dataset to ECDC format and append
-dataset_muenster = dataset_regbez_muenster[dataset_regbez_muenster['Gebiet'].isin(['Stadt Münster'])]
-dataset_muenster_relevant = dataset_muenster[['Datum','Bestätigte Faelle']].set_index('Datum')
+if "MUENSTER" in countries:
+    # Convert Muenster dataset to ECDC format and append
+    dataset_muenster = dataset_regbez_muenster[dataset_regbez_muenster['Gebiet'].isin(['Stadt Münster'])]
+    dataset_muenster_relevant = dataset_muenster[['Datum','Bestätigte Faelle']].set_index('Datum')
 
-dataset_muenster_relevant.index = pandas.DatetimeIndex(dataset_muenster_relevant.index,dayfirst=True)
-dataset_muenster_relevant = dataset_muenster_relevant.diff(periods=-1)
+    dataset_muenster_relevant.index = pandas.DatetimeIndex(dataset_muenster_relevant.index,dayfirst=True)
+    dataset_muenster_relevant = dataset_muenster_relevant.diff(periods=-1)
 
-idx = pandas.date_range(start=dataset_muenster_relevant.index[-1] - timedelta(days=0), end=dataset_muenster_relevant.index[0] - timedelta(days=0))[::-1]
-dataset_muenster_relevant = dataset_muenster_relevant.reindex(idx,fill_value=0)
-dataset_muenster_relevant['popData2019'] = 315293
-dataset_muenster_relevant['countriesAndTerritories'] = 'Münster'
-dataset_muenster_relevant['geoId'] = 'MUENSTER'
-dataset_muenster_relevant = dataset_muenster_relevant.rename(columns={"Bestätigte Faelle": "cases"})
-dataset = dataset.append(dataset_muenster_relevant)
+    idx = pandas.date_range(start=dataset_muenster_relevant.index[-1] - timedelta(days=0), end=dataset_muenster_relevant.index[0] - timedelta(days=0))[::-1]
+    dataset_muenster_relevant = dataset_muenster_relevant.reindex(idx,fill_value=0)
+    dataset_muenster_relevant['popData2019'] = 315293
+    dataset_muenster_relevant['countriesAndTerritories'] = 'Münster'
+    dataset_muenster_relevant['geoId'] = 'MUENSTER'
+    dataset_muenster_relevant = dataset_muenster_relevant.rename(columns={"Bestätigte Faelle": "cases"})
+    dataset = dataset.append(dataset_muenster_relevant)
 
 
 # In[ ]:
@@ -100,22 +102,24 @@ indexer = pandas.api.indexers.FixedForwardWindowIndexer(window_size=7)
 for country in countries:
     merged_data['cum_cases_7_days_'+country] = merged_data['cases_per_100k_'+country].shift(1).rolling(window=indexer).sum()
 
+pyplot.rcParams.update({'font.size': 22})
 # Plot data
 fig = pyplot.figure(figsize=(16, 12))
 ax1 = fig.add_subplot(1,1,1)
 
-ax1.set_ylabel('Cummulative Cases 7 Days per 100k Pop.')
+ax1.set_ylabel('Neuinfektionen pro 7 Tage pro 100.000 Einwohner')
 for country in countries:
     color = next(ax1._get_lines.prop_cycler)['color']
     country_name = dataset[dataset['geoId']==country].head(1)['countriesAndTerritories'].iloc[0]
-    merged_data[1:max_days]['cum_cases_7_days_'+country].plot(kind='line',ax=ax1,label=country_name,color=color)
+    merged_data[1:max_days]['cum_cases_7_days_'+country].plot(kind='line',ax=ax1,label=country_name,color=color,linewidth=3)
     # extrapolation
     try:
         if country != "MUENSTER":
             y = merged_data[1:extrapolation_look_back]['cum_cases_7_days_' + country]
             i = y.index.to_pydatetime()
             xi = mdates.date2num(i)
-            fitting_parameters, covariance = curve_fit(exponential_fit, range(len(xi)), y)
+            p0 = [1,1,y[-1]]
+            fitting_parameters, covariance = curve_fit(exponential_fit, range(len(xi)), y, p0 = p0 )
             a, b, c = fitting_parameters
             new_data = []
             new_data_index = []
@@ -128,7 +132,21 @@ for country in countries:
         pass
     
 ax1.legend()
-ax1.set_xlabel('Date')
+#ax1.legend(prop={'size': 32})
+ax1.set_xlabel('Datum')
+pyplot.axvline(x='2020-11-02', ymin=0, ymax=160, linestyle='--',color='black',label="Lockdown Light")
+pyplot.text('2020-11-03', # x-value from data
+                 80, # wiggle the labels 2so they don't overlap
+                 'Lockdown Light', # string label
+                 color='black',rotation=90)
+#pyplot.axvline(x='2020-12-24', ymin=0, ymax=160, linestyle='--',color='black',label="Heilig Abend")
+#pyplot.text('2020-12-25', # x-value from data
+#                 80, # wiggle the labels 2so they don't overlap
+#                 'Heilig Abend', # string label
+#                 color='black',rotation=90)
+
+pyplot.axvline(x='2020-12-02', ymin=0, ymax=160, linestyle='--',color='black',label="Heilig Abend")
+
 pyplot.show()
 
 # Print last two days
